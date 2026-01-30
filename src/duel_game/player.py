@@ -38,6 +38,7 @@ class Player(ABC):
             action_in_turn=self.action_in_turn
         )
     
+    
 class DummyPlayer(Player):
     def __init__(self, policy):
         super.__init__(self)
