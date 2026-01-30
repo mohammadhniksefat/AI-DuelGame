@@ -1,22 +1,9 @@
-from duel_game.player import Player, PlayerState
+from duel_game.player import Player
 from duel_game.data_processor import Tracker
+from duel_game.essential_types import Action, GameState
 from enum import Enum
-from dataclasses import dataclass
 import random
 import math
-
-class Action(Enum):
-    ATTACK = 1
-    DEFENSE = 2
-    DODGE = 3
-    HEAL = 4
-
-
-@dataclass(frozen=True)
-class GameState:
-    turn: int
-    player_1: PlayerState
-    player_2: PlayerState
 
 
 class DuelGame:
@@ -40,7 +27,7 @@ class DuelGame:
         self.records = []
         self.turn = 0
         self.max_turns = max_turns
-    
+
 
     def _after_decisions_notification(self):
         if not self.tracker:

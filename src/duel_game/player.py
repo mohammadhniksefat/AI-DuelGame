@@ -1,16 +1,6 @@
 from abc import ABC, abstractmethod
-from duel_game.game import Action
+from duel_game.essential_types import Action, PlayerState
 from duel_game.game import DuelGame
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class PlayerState:
-    health: int
-    stamina: int
-    is_shield_available: bool
-    shield_cd: int
-    action_in_turn: Action
 
 
 class Player(ABC):
