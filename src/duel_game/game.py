@@ -29,7 +29,7 @@ class DuelGame:
     attack_damage = 20
     heal_amount = 20
     increase_stamina_each_turn = 20
-    sheild_spawn_duration = 5 # turns for shield to get accessible
+    sheild_spawn_duration = 5 # turns for shield to get accessible for doing Defense
     dodge_probability = 0.5
 
     def __init__(self, player_1: Player, player_2: Player, tracker: Tracker = None, max_turns: int = math.inf) -> None:
