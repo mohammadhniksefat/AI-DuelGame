@@ -1,6 +1,7 @@
-from duel_game.game import GameState, Action
+from duel_game.essential_types import GameState, Action
 from dataclasses import dataclass
 from typing import List, Dict
+
 
 @dataclass(frozen=True)
 class DataSample:
@@ -37,7 +38,7 @@ class Tracker:
 
     def get_samples(self) -> List[DataSample]:
         return self.data_samples
-    
+
     def _extract_features(self, game_state: GameState) -> dict:
         p = game_state.player_1
         e = game_state.player_2

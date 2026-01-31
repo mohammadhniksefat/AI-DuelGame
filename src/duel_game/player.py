@@ -1,6 +1,11 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 from duel_game.essential_types import Action, PlayerState
+
+# to prevent circular import errors (ImportError)
+if TYPE_CHECKING:
+    from duel_game.game import DuelGame
 
 class Player(ABC):
     def __init__(self):
@@ -8,14 +13,14 @@ class Player(ABC):
         self.health = 100
         self.is_shield_available = True
         self.shield_cd = 0
-        self.game
+        self.game: DuelGame
         self.action_in_turn: Action|None = None
 
     @abstractmethod
     def choose_action(self) -> Action:
         pass
 
-    def set_game(self, gameObject):
+    def set_game(self, gameObject: DuelGame):
         self.game = gameObject
 
     def get_state(self) -> PlayerState:
