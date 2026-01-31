@@ -1,13 +1,6 @@
 from duel_game.essential_types import GameState, Action
-from dataclasses import dataclass
-from typing import List, Dict
-
-
-@dataclass(frozen=True)
-class DataSample:
-    features: Dict[str, float]
-    label: Action
-    turn: int
+from essential_types import DataSample
+from typing import List
 
 
 class Tracker:

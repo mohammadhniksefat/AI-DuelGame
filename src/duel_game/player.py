@@ -1,7 +1,7 @@
 from __future__ import annotations
+from duel_game.essential_types import Action, PlayerState
 from abc import ABC, abstractmethod
 from typing import Callable, TYPE_CHECKING
-from duel_game.essential_types import Action, PlayerState
 
 # to prevent circular import errors (ImportError)
 if TYPE_CHECKING:

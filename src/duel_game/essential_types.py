@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict
 
 class Action(Enum):
     ATTACK = 1
@@ -21,3 +22,9 @@ class GameState:
     turn: int
     player_1: PlayerState
     player_2: PlayerState
+    
+@dataclass(frozen=True)
+class DataSample:
+    features: Dict[str, float]
+    label: Action
+    turn: int
