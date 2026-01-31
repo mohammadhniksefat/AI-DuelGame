@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from duel_game.essential_types import Action, PlayerState
-from duel_game.game import DuelGame
-
 
 class Player(ABC):
     def __init__(self):
@@ -9,14 +7,14 @@ class Player(ABC):
         self.health = 100
         self.is_shield_available = True
         self.shield_cd = 0
-        self.game: DuelGame
+        self.game
         self.action_in_turn: Action|None = None
 
     @abstractmethod
     def choose_action(self) -> Action:
         pass
 
-    def set_game(self, gameObject: DuelGame):
+    def set_game(self, gameObject):
         self.game = gameObject
 
     def get_state(self) -> PlayerState:
