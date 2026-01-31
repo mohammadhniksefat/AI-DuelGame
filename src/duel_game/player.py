@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Callable
 from duel_game.essential_types import Action, PlayerState
 
 class Player(ABC):
@@ -34,12 +35,12 @@ class DummyPlayer(Player):
 
 class Policy(ABC):
     @abstractmethod
-    def get_policy_performer() -> function:
+    def get_policy_performer() -> Callable[[Player], Action]:
         pass
 
 class Agressive(Policy):
     @staticmethod
     def get_policy_performer():
-        def func(self):
+        def func(self) -> Action:
             pass
         return func
