@@ -19,14 +19,17 @@ class DuelGame:
     sheild_spawn_duration = 5 # turns for shield to get accessible for doing Defense
     dodge_probability = 0.5
 
-    def __init__(self, player_1: Player, player_2: Player, tracker: Tracker = None, max_turns: int = math.inf) -> None:
+    # rng -> Random Number Generator
+    def __init__(self, player_1: Player, player_2: Player, tracker: Tracker = None, max_turns: int = math.inf, rng=random.Random()) -> None:
         self.player_1, self.player_2 = player_1, player_2
         self.player_1.game = self.player_2.game = self
+        self.player_1.rng = self.player_2.rng = rng
         self.winner = None
         self.tracker = tracker
         self.records = []
         self.turn = 0
         self.max_turns = max_turns
+        self.rng = rng
 
 
     def _after_decisions_notification(self):
