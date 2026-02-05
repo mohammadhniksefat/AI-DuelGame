@@ -20,7 +20,7 @@ class DuelGame:
     dodge_probability = 0.5
 
     # rng -> Random Number Generator
-    def __init__(self, player_1: Player, player_2: Player, tracker: Tracker = None, max_turns: int = math.inf, rng=random.Random()) -> None:
+    def __init__(self, player_1: Player, player_2: Player, tracker: Tracker|None = None, max_turns: int = math.inf, rng=random.Random()) -> None:
         self.player_1, self.player_2 = player_1, player_2
         self.player_1.game = self.player_2.game = self
         self.player_1.rng = self.player_2.rng = rng
@@ -31,6 +31,8 @@ class DuelGame:
         self.max_turns = max_turns
         self.rng = rng
 
+    def set_tracker(self, tracker: Tracker):
+        self.tracker = tracker
 
     def _after_decisions_notification(self):
         if not self.tracker:

@@ -1,4 +1,6 @@
 from duel_game.essential_types import GameState, Action
+from duel_game.helpers import compute_imminent_attack_likely
+from dotenv import load_dotenv
 from essential_types import DataSample
 from typing import List
 
@@ -10,10 +12,11 @@ class Tracker:
     MAX_TURN = 50  # normalization cap'
     THREAT_THRESHOLD = 0.5
 
-    def __init__(self):
+    def __init__(self, game):
         self.records: List[GameState] = []
         self.data_samples: List[DataSample] = []
-
+        self.game_ref = game
+    
     def record(self, game_state: GameState):
         """
         Record a game state AFTER players have chosen actions
@@ -155,12 +158,7 @@ class Tracker:
         momentum_score = min(momentum_score, 1.0)
 
         # 5. Final Composition
-        features["enemy_attack_likelihood"] = (
-            0.40 * behavioral_threat +
-            0.30 * capability_score +
-            0.20 * opportunity_score +
-            0.10 * momentum_score
-        )
+        features["enemy_attack_likelihood"] = compute_imminent_attack_likely(self.game_ref.player_1, 5)
 
         return features
 
@@ -172,91 +170,3 @@ class Tracker:
             Action.DODGE: 10,
             Action.HEAL: 45
         }[action]
-    
-    def compute_imminent_attack_likely(
-        opponent_actions_history,
-        opponent_stamina,
-        opponent_hp,
-        your_hp,
-        your_shield_available,
-        opponent_last_action,
-        history_length=5,
-        threat_threshold=0.5,
-    ):
-        """
-        Returns a float in [0, 1] representing likelihood of an incoming attack.
-        """
-
-        # -----------------------------
-        # 1. Behavioral Threat (history-based)
-        # -----------------------------
-        attack_count = sum(
-            1 for a in opponent_actions_history[-history_length:]
-            if a == Action.ATTACK
-        )
-        attack_ratio = attack_count / history_length
-
-        behavioral_threat = max(
-            0.0,
-            (attack_ratio - threat_threshold) / (1.0 - threat_threshold)
-        )
-
-        # -----------------------------
-        # 2. Capability Score (HARD CONSTRAINT)
-        # -----------------------------
-        ATTACK_COST = 30
-        MAX_STAMINA = 100
-
-        if opponent_stamina < ATTACK_COST:
-            capability_score = 0.0
-        else:
-            stamina_surplus = (
-                opponent_stamina - ATTACK_COST
-            ) / (MAX_STAMINA - ATTACK_COST)
-
-            hp_confidence = min(opponent_hp / 100.0, 1.0)
-
-            capability_score = 0.7 * stamina_surplus + 0.3 * hp_confidence
-
-        capability_score = min(capability_score, 1.0)
-
-        # -----------------------------
-        # 3. Opportunity Score (your vulnerability)
-        # -----------------------------
-        opportunity_score = 0.0
-
-        if your_hp <= 30:
-            opportunity_score += 0.5
-
-        if not your_shield_available:
-            opportunity_score += 0.3
-
-        if opponent_last_action == Action.ATTACK:
-            opportunity_score += 0.2
-
-        opportunity_score = min(opportunity_score, 1.0)
-
-        # -----------------------------
-        # 4. Momentum Score
-        # -----------------------------
-        momentum_score = 0.0
-
-        if attack_ratio >= 0.6:
-            momentum_score += 0.6
-
-        if opponent_last_action == Action.ATTACK:
-            momentum_score += 0.4
-
-        momentum_score = min(momentum_score, 1.0)
-
-        # -----------------------------
-        # 5. Final Weighted Composition
-        # -----------------------------
-        imminent_attack_likely = (
-            0.40 * behavioral_threat +
-            0.30 * capability_score +
-            0.20 * opportunity_score +
-            0.10 * momentum_score
-        )
-
-        return min(max(imminent_attack_likely, 0.0), 1.0)
