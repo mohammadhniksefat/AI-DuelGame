@@ -92,7 +92,4 @@ class DuelGame:
             elif player_action == Action.DODGE and random.random() > self.dodge_probability:
                 pass
             else:
-                player.health -= self.attack_damage
-        
-        player.action_in_turn = None
-        
+                player.health -= self.attack_damage        
