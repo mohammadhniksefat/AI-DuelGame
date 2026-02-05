@@ -85,31 +85,6 @@ class DatasetRepository:
 
         self.conn.commit()
 
-
-    def create_config_template(self, config: Dict, name, description="") -> id:
-        pass
-
-    def get_config_template(self, template_id) -> dict:
-        pass
-
-    def is_config_available(self, config_hash) -> int:
-        pass
-
-    def get_new_template_version_number(self):
-        pass
-
-    def create_run(self, template_id, label,  samples_count, seed, note="") -> int:
-        pass
-
-    def get_run_samples(self, run_id) -> List[dict]:
-        pass
-
-    def create_samples(self, samples: List[Dict[str, float|List[float]]], run_id):
-        pass
-
-    def create_sample(self, features: Dict[str, float], label: float, run_id):
-        pass
-
     def _generate_config_hash(self, config_json: str) -> str:
         """Generate a hash for the configuration JSON."""
         return hashlib.sha256(config_json.encode()).hexdigest()
@@ -262,7 +237,7 @@ class DatasetRepository:
         
         return samples
 
-    def create_sample(self, features: Dict[str, float], label: int, run_id: int) -> int:
+    def store_sample(self, features: Dict[str, float], label: int, run_id: int) -> int:
         """
         Create a single sample.
         
@@ -285,7 +260,7 @@ class DatasetRepository:
         self.conn.commit()
         return cursor.lastrowid
 
-    def create_samples(self, samples: List[Dict[str, Any]], run_id: int) -> List[int]:
+    def store_samples(self, samples: List[Dict[str, Any]], run_id: int) -> List[int]:
         """
         Create multiple samples in a batch.
         
