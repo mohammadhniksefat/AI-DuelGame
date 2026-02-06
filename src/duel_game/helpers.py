@@ -1,8 +1,12 @@
 # Helper function for breaking down probabilities (from previous implementation)
-from typing import Dict
+from __future__ import annotations
+from typing import Dict, TYPE_CHECKING
 from enum import Enum
-from duel_game.essential_types import Action
-from duel_game.player import DummyPlayer
+from essential_types import Action
+
+# to prevent circular import errors (ImportError)
+if TYPE_CHECKING:
+    from player import DummyPlayer
 
 def break_down_probability(prob_dict: Dict[Enum, float], target_value: Enum, remove_target: bool = True) -> Dict[Enum, float]:
     """

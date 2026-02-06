@@ -1,6 +1,6 @@
 from __future__ import annotations
-from duel_game.essential_types import Action, PlayerState
-from duel_game.helpers import break_down_probability, compute_imminent_attack_likely
+from essential_types import Action, PlayerState
+from helpers import break_down_probability, compute_imminent_attack_likely
 from abc import ABC, abstractmethod
 from typing import Callable, TYPE_CHECKING, Dict, Callable, Type
 from enum import Enum
@@ -10,7 +10,7 @@ import os
 
 # to prevent circular import errors (ImportError)
 if TYPE_CHECKING:
-    from duel_game.game import DuelGame
+    from game import DuelGame
 
 # Load environment variables
 load_dotenv()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
+from typing import List
 
 class Action(Enum):
     ATTACK = 1

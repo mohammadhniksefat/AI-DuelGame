@@ -1,6 +1,6 @@
-from duel_game.player import Player
-from duel_game.data_processor import Tracker
-from duel_game.essential_types import Action, GameState
+from player import Player
+from data_processor import Tracker
+from essential_types import Action, GameState
 from enum import Enum
 import random
 import math

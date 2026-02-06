@@ -1,10 +1,12 @@
 import math
 import pytest
+from unittest.mock import Mock, patch
 
 # Adjust these imports if your project paths differ.
-from duel_game.data_processor import Tracker
-from duel_game.game import GameState, Action
-from duel_game.player import PlayerState
+from data_processor import Tracker
+from game import DuelGame
+from player import PlayerState
+from essential_types import GameState, Action
 
 
 def make_player(health, stamina, is_shield_available, shield_cd, action):
@@ -25,9 +27,13 @@ def make_gs(turn, p1_action, p2_action, p1_hp=100, p2_hp=100, p1_stamina=100, p2
                      shield_cd=0, action=p2_action)
     return GameState(turn=turn, player_1=p1, player_2=p2)
 
+@pytest.fixture
+def mock_game_obj():
+    mock = Mock(DuelGame)
+    mock.game_ref.player_1 = None
 
-def test_record_and_basic_feature_normalization():
-    tracker = Tracker()
+def test_record_and_basic_feature_normalization(mock_game_obj):
+    tracker = Tracker(mock_game_obj)
 
     gs = make_gs(turn=1, p1_action=Action.ATTACK, p2_action=Action.DEFENSE,
                  p1_hp=80, p2_hp=40, p1_stamina=50, p2_stamina=20)
@@ -50,8 +56,8 @@ def test_record_and_basic_feature_normalization():
     assert sample.turn == 1
 
 
-def test_turn_normalization_cap():
-    tracker = Tracker()
+def test_turn_normalization_cap(mock_game_obj):
+    tracker = Tracker(mock_game_obj)
     # very large turn should be capped to 1.0
     gs = make_gs(turn=9999, p1_action=Action.DEFENSE, p2_action=Action.DEFENSE)
     tracker.record(gs)
@@ -60,8 +66,8 @@ def test_turn_normalization_cap():
     assert f["turn"] == pytest.approx(1.0)
 
 
-def test_history_action_counts_last_and_stamina_spent_recent():
-    tracker = Tracker()
+def test_history_action_counts_last_and_stamina_spent_recent(mock_game_obj):
+    tracker = Tracker(mock_game_obj)
     # Create a 5-step history: ATTACK, ATTACK, DODGE, HEAL, DEFENSE
     actions = [Action.ATTACK, Action.ATTACK, Action.DODGE, Action.HEAL, Action.DEFENSE]
     stamina_values = [100, 70, 60, 30, 10]  # arbitrary valid stamina values
@@ -90,8 +96,8 @@ def test_history_action_counts_last_and_stamina_spent_recent():
     assert f["stamina_spent_recent"] == pytest.approx(expected_spent / (tracker.MAX_STAMINA * tracker.HISTORY_LEN))
 
 
-def test_hp_delta_recent_computation():
-    tracker = Tracker()
+def test_hp_delta_recent_computation(mock_game_obj):
+    tracker = Tracker(mock_game_obj)
 
     # Create health sequence: 100 -> 90 -> 80 -> 85 -> 75
     hp_sequence = [100, 90, 80, 85, 75]
@@ -104,10 +110,10 @@ def test_hp_delta_recent_computation():
     # hp_delta: (100-100) + (90-100) + (80-90) + (85-80) + (75-85) = 0 -10 -10 +5 -10 = -25
     expected_hp_delta = -25
     assert f["hp_delta_recent"] == pytest.approx(expected_hp_delta / tracker.MAX_HP)
+    
 
-
-def test_can_attack_can_heal_can_dodge_thresholds():
-    tracker = Tracker()
+def test_can_attack_can_heal_can_dodge_thresholds(mock_game_obj):
+    tracker = Tracker(mock_game_obj)
 
     # stamina < 30 -> cannot attack
     gs1 = make_gs(turn=1, p1_action=Action.DEFENSE, p2_action=Action.DEFENSE,
