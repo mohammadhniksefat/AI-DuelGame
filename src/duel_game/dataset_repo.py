@@ -27,9 +27,11 @@ class DatasetRepository:
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS config_template (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            app_version INTEGER NOT NULL,
+            version INTEGER NOT NULL,
+            label TEXT NOT NULL,
             config_hash TEXT NOT NULL UNIQUE,
-            env_config_json TEXT NOT NULL,
+            config_json TEXT NOT NULL,
             description TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -42,7 +44,7 @@ class DatasetRepository:
         CREATE TABLE IF NOT EXISTS dataset_run (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             template_id INTEGER NOT NULL,
-            run_index INTEGER NOT NULL,
+            run_index TEXT NOT NULL,
             sample_count INTEGER NOT NULL DEFAULT 0,
             seed INTEGER NOT NULL,
             label TEXT,
@@ -91,25 +93,27 @@ class DatasetRepository:
         """Generate a hash for the configuration JSON."""
         return hashlib.sha256(config_json.encode()).hexdigest()
 
-    def create_config_template(self, config_json: str, name: str, description: str = "") -> int:
+    def create_config_template(self, config_json: str, app_version: int, label: str, description: str = "") -> int:
         """
         Create a new configuration template.
         
         Args:
             config_json: JSON string of the configuration
-            name: Name of the template
+            app_version: specific App Version Number
+            label: Label of the template
             description: Optional description
             
         Returns:
             The ID of the created template
         """
         config_hash = self._generate_config_hash(config_json)
-        
+        config_version = self.get_new_template_version_number(app_version)
+
         cursor = self.conn.cursor()
         cursor.execute("""
-            INSERT INTO config_template (name, config_hash, env_config_json, description)
-            VALUES (?, ?, ?, ?)
-        """, (name, config_hash, config_json, description))
+            INSERT INTO config_template (app_version, version, label, config_hash, config_json, description)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (app_version, config_version, label, config_hash, config_json, description))
         
         self.conn.commit()
         return cursor.lastrowid
@@ -126,7 +130,7 @@ class DatasetRepository:
         """
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT id, name, config_hash, env_config_json, description, created_at
+            SELECT id, app_version, version label, config_hash, config_json, description, created_at
             FROM config_template
             WHERE id = ?
         """, (template_id,))
@@ -137,14 +141,16 @@ class DatasetRepository:
         
         return {
             'id': row['id'],
-            'name': row['name'],
+            'app_version': row['app_version'],
+            'version': row['version'],
+            'label': row['label'],
             'config_hash': row['config_hash'],
-            'env_config_json': json.loads(row['env_config_json']),
+            'config_json': json.loads(row['config_json']),
             'description': row['description'],
             'created_at': row['created_at']
         }
 
-    def is_config_available(self, config_hash: str) -> Optional[int]:
+    def is_config_available_given_hash(self, config_hash: str) -> Optional[int]:
         """
         Check if a configuration with the given hash already exists.
         
@@ -162,7 +168,21 @@ class DatasetRepository:
         row = cursor.fetchone()
         return row['id'] if row else None
 
-    def get_new_template_version_number(self, template_id: int) -> int:
+    def get_new_template_version_number(self, app_version):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT MAX(version) as max_version_number
+            FROM config_template
+            WHERE app_version = ?
+        """, (app_version, ))
+
+        row = cursor.fetchone()
+        last_version_number = row['max_version_number'] if row['max_version_number'] is not None else 0
+
+        return last_version_number + 1
+
+
+    def get_new_run_version_number_given_template_id(self, template_id: int) -> int:
         """
         Get the next run index for a given template.
         
@@ -198,8 +218,13 @@ class DatasetRepository:
         Returns:
             The ID of the created run
         """
-        # Get the next run index
-        run_index = self.get_new_template_version_number(template_id)
+        config_template = self.get_config_template(template_id)
+        app_version = config_template['app_version']
+        template_version = config_template['version']
+
+        # Get the next run number
+        run_number = self.get_new_run_version_number_given_template_id(template_id)
+        run_index = f'{app_version}.{template_version}.{run_number}'
         
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -209,6 +234,91 @@ class DatasetRepository:
         
         self.conn.commit()
         return cursor.lastrowid
+
+    def set_samples_count_for_run(self, run_id, samples_count):
+        """
+        Update the sample_count for a specific dataset run.
+        
+        Args:
+            run_id (int): The ID of the dataset run to update
+            samples_count (int): The new sample count value (must be non-negative)
+        
+        Returns:
+            bool: True if update was successful, False otherwise
+        
+        Raises:
+            ValueError: If samples_count is negative
+            TypeError: If run_id or samples_count are not integers
+        """
+        # Input validation
+        if not isinstance(run_id, int):
+            raise TypeError(f"run_id must be an integer, got {type(run_id).__name__}")
+        
+        if not isinstance(samples_count, int):
+            raise TypeError(f"samples_count must be an integer, got {type(samples_count).__name__}")
+        
+        if samples_count < 0:
+            raise ValueError(f"samples_count must be non-negative, got {samples_count}")
+        
+        # If run_id doesn't exist, we can handle it gracefully or raise error
+        if run_id <= 0:
+            raise ValueError(f"run_id must be positive, got {run_id}")
+        
+        try:
+            # Use parameterized query to prevent SQL injection
+            cursor = self.conn.cursor()
+            
+            # First check if the run exists
+            cursor.execute("""
+                SELECT id FROM dataset_run WHERE id = ?
+            """, (run_id,))
+            
+            if not cursor.fetchone():
+                # Option 1: Log warning and return False
+                print(f"Warning: Run with ID {run_id} not found")
+                return False
+                
+                # Option 2: Raise an exception (uncomment if preferred)
+                # raise ValueError(f"Run with ID {run_id} not found")
+            
+            # Update the sample count
+            cursor.execute("""
+                UPDATE dataset_run 
+                SET sample_count = ?
+                WHERE id = ?
+            """, (samples_count, run_id))
+            
+            # Check if any row was actually updated
+            if cursor.rowcount == 0:
+                print(f"Warning: No rows updated for run_id {run_id}")
+                return False
+            
+            # Commit the transaction
+            self.conn.commit()
+            
+            # Verify the update (optional but good for debugging)
+            cursor.execute("""
+                SELECT sample_count FROM dataset_run WHERE id = ?
+            """, (run_id,))
+            
+            updated_value = cursor.fetchone()[0]
+            if updated_value == samples_count:
+                print(f"Successfully updated run {run_id} sample_count to {samples_count}")
+                return True
+            else:
+                print(f"Warning: Update may have failed. Expected {samples_count}, got {updated_value}")
+                return False
+                
+        except sqlite3.Error as e:
+            # Rollback in case of error
+            self.conn.rollback()
+            print(f"Database error occurred: {e}")
+            return False
+        
+        except Exception as e:
+            # Catch any other unexpected errors
+            print(f"Unexpected error occurred: {e}")
+            return False
 
     def get_run_samples(self, run_id: int) -> List[Dict[str, Any]]:
         """
@@ -314,7 +424,7 @@ class DatasetRepository:
         cursor.execute("""
             SELECT dr.id, dr.template_id, dr.run_index, dr.sample_count, 
                    dr.seed, dr.label, dr.note, dr.created_at,
-                   ct.name as template_name
+                   ct.label as template_label
             FROM dataset_run dr
             JOIN config_template ct ON dr.template_id = ct.id
             WHERE dr.id = ?
@@ -327,7 +437,7 @@ class DatasetRepository:
         return {
             'id': row['id'],
             'template_id': row['template_id'],
-            'template_name': row['template_name'],
+            'template_label': row['template_label'],
             'run_index': row['run_index'],
             'sample_count': row['sample_count'],
             'seed': row['seed'],
@@ -444,28 +554,28 @@ class DatasetRepository:
             'last_sample': date_row['last_sample']
         }
 
-    def search_config_templates(self, name_pattern: str = None) -> List[Dict[str, Any]]:
+    def search_config_templates(self, label_pattern: str = None) -> List[Dict[str, Any]]:
         """
-        Search for configuration templates by name.
+        Search for configuration templates by label.
         
         Args:
-            name_pattern: SQL LIKE pattern for name search
+            label_pattern: SQL LIKE pattern for label search
             
         Returns:
             List of matching templates
         """
         cursor = self.conn.cursor()
         
-        if name_pattern:
+        if label_pattern:
             cursor.execute("""
-                SELECT id, name, config_hash, description, created_at
+                SELECT id, label, config_hash, description, created_at
                 FROM config_template
-                WHERE name LIKE ?
+                WHERE label LIKE ?
                 ORDER BY created_at DESC
-            """, (f"%{name_pattern}%",))
+            """, (f"%{label_pattern}%",))
         else:
             cursor.execute("""
-                SELECT id, name, config_hash, description, created_at
+                SELECT id, label, config_hash, description, created_at
                 FROM config_template
                 ORDER BY created_at DESC
             """)
@@ -474,7 +584,7 @@ class DatasetRepository:
         for row in cursor.fetchall():
             templates.append({
                 'id': row['id'],
-                'name': row['name'],
+                'label': row['label'],
                 'config_hash': row['config_hash'],
                 'description': row['description'],
                 'created_at': row['created_at']
