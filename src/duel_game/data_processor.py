@@ -1,8 +1,9 @@
 from duel_game.essential_types import GameState, Action
+from duel_game.essential_types import features as feature_names
 from duel_game.helpers import compute_imminent_attack_likely
 from dotenv import load_dotenv
 from essential_types import DataSample
-from typing import List
+from typing import List, Dict
 
 
 class Tracker:
@@ -160,7 +161,7 @@ class Tracker:
         # 5. Final Composition
         features["enemy_attack_likelihood"] = compute_imminent_attack_likely(self.game_ref.player_1, 5)
 
-        return features
+        return Tracker._enforce_features_order_then_return_as_list(features)
 
     @staticmethod
     def _stamina_cost(action: Action) -> int:
@@ -170,3 +171,12 @@ class Tracker:
             Action.DODGE: 10,
             Action.HEAL: 45
         }[action]
+    
+    @staticmethod
+    def _enforce_features_order_then_return_as_list(features: Dict[str, float]) -> List[float]: 
+        features_tuple = []
+
+        for feature_name in feature_names:
+            features_tuple.append(features[feature_name])
+
+        return features_tuple

@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
+from duel_game.essential_types import DataSample
+
 class DatasetRepository:
     def __init__(self, db_path: str = "database.db"):
         self.db_path = Path(db_path)
@@ -237,7 +239,7 @@ class DatasetRepository:
         
         return samples
 
-    def store_sample(self, features: Dict[str, float], label: int, run_id: int) -> int:
+    def store_sample(self, features: List[float], label: int, run_id: int) -> int:
         """
         Create a single sample.
         
@@ -260,7 +262,7 @@ class DatasetRepository:
         self.conn.commit()
         return cursor.lastrowid
 
-    def store_samples(self, samples: List[Dict[str, Any]], run_id: int) -> List[int]:
+    def store_samples(self, samples: List[DataSample], run_id: int) -> List[int]:
         """
         Create multiple samples in a batch.
         
@@ -285,8 +287,8 @@ class DatasetRepository:
         
         # Batch insert for efficiency
         for sample in samples:
-            features_json = json.dumps(sample['features'])
-            label = sample['label']
+            features_json = json.dumps(sample.features)
+            label = sample.label
             
             cursor.execute("""
                 INSERT INTO samples (run_id, features_json, label)

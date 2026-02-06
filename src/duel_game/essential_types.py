@@ -25,7 +25,7 @@ class GameState:
     
 @dataclass(frozen=True)
 class DataSample:
-    features: Dict[str, float]
+    features: List[float]
     label: Action
     turn: int
 
