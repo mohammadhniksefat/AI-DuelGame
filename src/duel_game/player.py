@@ -49,7 +49,7 @@ class Player(ABC):
 
     def is_action_feasible(self, action: Action):
         if action == Action.HEAL:
-            return self.stamina >= 45
+            return self.stamina >= 45 and self.health <= 100
         elif action == Action.ATTACK:
             return self.stamina >= 30
         elif action == Action.DEFENSE:
@@ -61,7 +61,7 @@ class Player(ABC):
     def get_opponent_recent_actions(self, turns_number):
         is_history_fully_available = len(self.game.tracker.records) == turns_number
         return [record.player_2.action_in_turn for record in \
-            (self.game.tracker.records if is_history_fully_available else self.game.tracker.records[:-turns_number])]
+            (self.game.tracker.records if is_history_fully_available else self.game.tracker.records[-int(turns_number):])]
 
     def get_state(self) -> PlayerState:
         return PlayerState(
@@ -75,9 +75,12 @@ class Player(ABC):
     
 class DummyPlayer(Player):
     def __init__(self, policy: Type[Policy], rng=random.Random()):
-        super.__init__(self, rng)
-        self.choose_action = policy.get_policy_performer()
+        super().__init__(rng)
+        self.policy_performer = policy.get_policy_performer()
         self.archtype = policy.archtype
+    
+    def choose_action(self) -> Action:
+        return self.policy_performer(self)
 
 
 class Policy(ABC):
@@ -145,7 +148,7 @@ class Defensive(Policy):
             action = None
             
             # Check opponent's HP for opportunistic attack
-            if self.opponent_health < OPP_HP_THRESHOLD and self.rng.random() < ATTACK_PROB_OPP_HP_LOW:
+            if self.opponent.health < OPP_HP_THRESHOLD and self.rng.random() < ATTACK_PROB_OPP_HP_LOW:
                 if self.stamina >= 30:
                     action = Action.ATTACK
                 else:
@@ -161,7 +164,7 @@ class Defensive(Policy):
                         action = Action.ATTACK
                     else:
                         action = Action.DODGE
-                elif self.turn > ATTACK_START_TURN_THRESHOLD and \
+                elif self.game.turn > ATTACK_START_TURN_THRESHOLD and \
                      compute_imminent_attack_likely(self, ATTACK_THREAT_HISTORY_LENGTH) < ATTACK_THREAT_THRESHOLD and \
                      self.stamina >= 30:
                     action = Action.ATTACK
@@ -193,7 +196,7 @@ class Balanced(Policy):
                 return self.choose_random_feasible_action()
             
             # Calculate HP difference (self - opponent)
-            hp_diff = self.health - self.opponent_health
+            hp_diff = self.health - self.opponent.health
             
             # Domination situation
             if hp_diff >= DOMINATION_MARGIN and self.stamina >= 30:

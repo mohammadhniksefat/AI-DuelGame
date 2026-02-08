@@ -59,7 +59,7 @@ def compute_imminent_attack_likely(player: DummyPlayer, history_length):
         # 1. Behavioral Threat (history-based)
         # -----------------------------
         attack_count = sum(
-            1 for a in opponent_actions_history[-history_length:]
+            1 for a in opponent_actions_history
             if a == Action.ATTACK
         )
         behavioral_threat = attack_count / history_length

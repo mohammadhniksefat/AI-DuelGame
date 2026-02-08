@@ -55,7 +55,7 @@ class Tracker:
         # ----------------------------
         # B. Action History Features
         # ----------------------------
-        history = self.records[-self.HISTORY_LEN:]
+        history = self.records[-int(self.HISTORY_LEN):]
 
         action_counts = {a: 0 for a in Action}
         stamina_spent = 0

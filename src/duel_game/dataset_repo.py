@@ -130,7 +130,7 @@ class DatasetRepository:
         """
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT id, app_version, version label, config_hash, config_json, description, created_at
+            SELECT id, app_version, version, label, config_hash, config_json, description, created_at
             FROM config_template
             WHERE id = ?
         """, (template_id,))
@@ -194,14 +194,14 @@ class DatasetRepository:
         """
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT MAX(run_index) as max_index
+            SELECT COUNT(*) as max_index
             FROM dataset_run
             WHERE template_id = ?
         """, (template_id,))
         
         row = cursor.fetchone()
         max_index = row['max_index'] if row['max_index'] is not None else 0
-        return max_index + 1
+        return int(max_index) + 1
 
     def create_run(self, template_id: int, label: str, samples_count: int, 
                   seed: int, note: str = "") -> int:
@@ -398,9 +398,9 @@ class DatasetRepository:
         # Batch insert for efficiency
         for sample in samples:
             features_json = json.dumps(sample.features)
-            label = sample.label
+            label = sample.label.value
             
-            cursor.execute("""
+            cursor.execute( """
                 INSERT INTO samples (run_id, features_json, label)
                 VALUES (?, ?, ?)
             """, (run_id, features_json, label))
@@ -596,6 +596,7 @@ class DatasetRepository:
         """Close the database connection."""
         if self.conn:
             self.conn.close()
+            print('database connection has closed')
 
     def __enter__(self):
         return self

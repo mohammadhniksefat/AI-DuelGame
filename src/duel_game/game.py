@@ -20,16 +20,14 @@ class DuelGame:
     dodge_probability = 0.5
 
     # rng -> Random Number Generator
-    def __init__(self, player_1: Player, player_2: Player, tracker: Tracker|None = None, max_turns: int = math.inf, rng=random.Random()) -> None:
+    def __init__(self, player_1: Player, player_2: Player, max_turns: int = math.inf, rng=random.Random()) -> None:
         self.player_1, self.player_2 = player_1, player_2
-        self.player_1.game = self.player_2.game = self
-        self.player_1.rng = self.player_2.rng = rng
         self.winner = None
-        self.tracker = tracker
         self.records = []
         self.turn = 0
         self.max_turns = max_turns
         self.rng = rng
+        self.tracker:Tracker
 
     def set_tracker(self, tracker: Tracker):
         self.tracker = tracker
@@ -58,8 +56,8 @@ class DuelGame:
         self._update_player_state_before_turn(self.player_1)
         self._update_player_state_before_turn(self.player_2)
 
-        player_1_action: Action = self.player_1.choose_action()
-        player_2_action: Action = self.player_2.choose_action()
+        player_1_action = self.player_1.action_in_turn = self.player_1.choose_action()
+        player_2_action = self.player_2.action_in_turn = self.player_2.choose_action()
         self._after_decisions_notification()
 
         self._update_player_state_based_on_actions(self.player_1, player_1_action, player_2_action)
@@ -85,7 +83,7 @@ class DuelGame:
         player.stamina -= self.decrease_stamina_amount[player_action]
 
         if player_action == Action.HEAL:
-            player.health += self.heal_amount
+            player.health = min(100, player.health + self.heal_amount)
 
         if opponent_action == Action.ATTACK:
             if player_action == Action.DEFENSE:
@@ -94,4 +92,6 @@ class DuelGame:
             elif player_action == Action.DODGE and random.random() > self.dodge_probability:
                 pass
             else:
-                player.health -= self.attack_damage        
+                player.health = max(0, self.player_1.health - self.attack_damage)
+
+        player.action_in_turn = player_action
