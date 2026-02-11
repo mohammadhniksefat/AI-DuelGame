@@ -1,9 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 from typing import List
 
-class Action(Enum):
+class Action(IntEnum):
     ATTACK = 1
     DEFENSE = 2
     DODGE = 3
