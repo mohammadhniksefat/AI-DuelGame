@@ -1,13 +1,24 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List
+from typing import List, Dict
 
 class Action(IntEnum):
     ATTACK = 1
     DEFENSE = 2
     DODGE = 3
     HEAL = 4
+
+    @classmethod
+    def to_string(cls, value: int) -> str:
+        """Convert action value to readable string"""
+        mapping = {
+            1: "ATTACK",
+            2: "DEFENSE", 
+            3: "DODGE",
+            4: "HEAL"
+        }
+        return mapping.get(value, "UNKNOWN")
 
 @dataclass(frozen=True)
 class PlayerState:
@@ -29,6 +40,15 @@ class DataSample:
     label: Action
     turn: int
 
+@dataclass
+class PredictionResult:
+    """Container for prediction results"""
+    predicted_action: Action
+    predicted_action_name: str
+    confidence: float
+    all_probabilities: Dict[str, float]
+    model_used: str
+    run_id: int
 
 # Total features: 24
 features = [

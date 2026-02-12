@@ -1,5 +1,6 @@
 from __future__ import annotations
 from essential_types import Action, PlayerState
+from trained_model import TrainedModel
 from helpers import break_down_probability, compute_imminent_attack_likely
 from abc import ABC, abstractmethod
 from typing import Callable, TYPE_CHECKING, Dict, Callable, Type
@@ -72,6 +73,33 @@ class Player(ABC):
             action_in_turn=self.action_in_turn
         )
     
+class ArtificialPlayer(Player):
+    def __init__(self, prediction_model: TrainedModel, rng=random.Random()):
+        super().__init__(rng)
+        self.model = prediction_model
+
+    def choose_action(self) -> Action:
+        last_round_sample = self.game.tracker.get_last_sample()
+        predicted_action = self.model.predict(last_round_sample.features)
+
+        my_action: Action
+
+        if predicted_action == Action.ATTACK:
+            if self.is_action_feasible(Action.DEFENSE):
+                my_action = Action.DEFENSE
+            elif self.is_action_feasible(Action.HEAL):
+                my_action = Action.HEAL
+            else:
+                my_action = Action.DODGE
+        elif predicted_action == Action.DEFENSE:
+            my_action = None
+        elif predicted_action == Action.DODGE:
+            my_action = Action.ATTACK
+        elif predicted_action == Action.HEAL:
+            my_action = Action.ATTACK
+
+        return my_action
+
     
 class DummyPlayer(Player):
     def __init__(self, policy: Type[Policy], rng=random.Random()):

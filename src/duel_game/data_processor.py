@@ -35,6 +35,12 @@ class Tracker:
 
     def get_samples(self) -> List[DataSample]:
         return self.data_samples
+     
+    def get_last_sample(self) -> DataSample:
+        if len(self.data_samples) == 0:
+            return None
+        else:
+            return self.data_samples[-1]
 
     def _extract_features(self, game_state: GameState) -> dict:
         p = game_state.player_1

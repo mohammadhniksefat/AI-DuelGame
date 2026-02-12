@@ -1,10 +1,11 @@
 import sqlite3
 import json
-from typing import List, Optional, Tuple
+from typing import List, Optional, Dict
 from enum import IntEnum
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from datetime import datetime
+import random
 
 from essential_types import Action
 
@@ -34,15 +35,9 @@ class ModelRepository:
             );
             """)
             
-            # Add unique constraint to prevent multiple models per run
-            cursor.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_models_run_id 
-            ON models(run_id);
-            """)
-            
             conn.commit()
     
-    def save_model(self, run_id: int, weights: List[float], accuracy: Optional[float] = None) -> int:
+    def save_model(self, run_id: int, weights: Dict[int, List[float]], accuracy: Optional[float] = None) -> int:
         """
         Save model weights to database
         Returns the model ID
@@ -51,17 +46,13 @@ class ModelRepository:
             cursor = conn.cursor()
             
             # Convert weights to JSON string
-            weights_json = json.dumps([float(w) for w in weights])
+            weights_json = json.dumps(weights)
             
             # Insert or replace (to update existing model for this run)
             cursor.execute("""
-            INSERT OR REPLACE INTO models 
-            (id, run_id, weights_json, accuracy, created_at)
-            VALUES (
-                COALESCE((SELECT id FROM models WHERE run_id = ?), NULL),
-                ?, ?, ?, CURRENT_TIMESTAMP
-            )
-            """, (run_id, run_id, weights_json, accuracy))
+            INSERT INTO models (run_id, weights_json, accuracy, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            """, (run_id, weights_json, accuracy))
             
             model_id = cursor.lastrowid
             
@@ -126,3 +117,16 @@ class ModelRepository:
             conn.commit()
             return cursor.rowcount > 0
         
+
+class TrainedModel:
+    def __init__(self, weights: Dict[int, List[float]]):
+        self.weights = weights
+
+    def predict(self, input: List[float|int]):
+        classes = list(self.weights.keys())
+        if input is None:
+            predicted_class = random.choice([Action.ATTACK, Action.DODGE, Action.DEFENSE]).value
+        else:
+            predicted_class = classes.reduce(lambda max, c : c if self.weights[c][0] + np.dot(input * self.weights[1:]) > max else max)
+
+        return Action(int(predicted_class))
