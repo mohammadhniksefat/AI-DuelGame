@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from datetime import datetime
 import random
+from functools import reduce
 
 from essential_types import Action
 
@@ -64,7 +65,7 @@ class ModelRepository:
             conn.commit()
             return model_id
     
-    def get_model(self, run_id: int) -> Optional[dict]:
+    def get_model(self, model_id: int) -> Optional[dict]:
         """Retrieve model by run_id"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -72,8 +73,8 @@ class ModelRepository:
             
             cursor.execute("""
             SELECT id, run_id, weights_json, accuracy, created_at
-            FROM models WHERE run_id = ?
-            """, (run_id,))
+            FROM models WHERE id = ?
+            """, (model_id,))
             
             row = cursor.fetchone()
             if row:
@@ -122,11 +123,12 @@ class TrainedModel:
     def __init__(self, weights: Dict[int, List[float]]):
         self.weights = weights
 
-    def predict(self, input: List[float|int]):
+    def predict(self, input: List[float|int]|None):
         classes = list(self.weights.keys())
         if input is None:
             predicted_class = random.choice([Action.ATTACK, Action.DODGE, Action.DEFENSE]).value
         else:
-            predicted_class = classes.reduce(lambda max, c : c if self.weights[c][0] + np.dot(input * self.weights[1:]) > max else max)
+            compute_score = lambda c: self.weights[c][0] + np.dot(input, self.weights[c][1:])
+            predicted_class = max(classes, key=compute_score)
 
         return Action(int(predicted_class))

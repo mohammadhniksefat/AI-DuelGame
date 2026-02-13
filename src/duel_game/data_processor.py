@@ -70,9 +70,9 @@ class Tracker:
         prev_hp = history[0].player_1.health if len(history) > 1 else p.health
 
         for state in history:
-            action = state.player_1.action_in_turn
+            action: Action = state.player_1.action_in_turn
             action_counts[action] += 1
-            stamina_spent += self._stamina_cost(action)
+            stamina_spent += action.stamina_cost()
             hp_delta += state.player_1.health - prev_hp
             prev_hp = state.player_1.health
 
@@ -80,7 +80,7 @@ class Tracker:
             features[f"count_{action.name.lower()}"] = count / self.HISTORY_LEN
 
         last_action = history[-1].player_1.action_in_turn
-        for action in Action:
+        for action in [Action(c) for c in [1,2,3,4]]:
             features[f"last_{action.name.lower()}"] = float(action == last_action)
 
         features["stamina_spent_recent"] = stamina_spent / (self.MAX_STAMINA * self.HISTORY_LEN)
@@ -89,10 +89,10 @@ class Tracker:
         # ----------------------------
         # C. Feasibility Indicators
         # ----------------------------
-        features["can_attack"] = float(p.stamina >= 30)
-        features["can_heal"] = float(p.stamina >= 45)
-        features["can_dodge"] = float(p.stamina >= 10)
-        features["can_defend"] = 1.0
+        features["can_attack"] = float(p.stamina >= Action.ATTACK.stamina_cost())
+        features["can_heal"] = float(p.stamina >= Action.HEAL.stamina_cost())
+        features["can_dodge"] = float(p.stamina >= Action.DODGE.stamina_cost())
+        features["can_defend"] = 1.0 if p.is_shield_available else float(0)
 
         # ----------------------------
         # D. Risk Context Features
@@ -106,7 +106,7 @@ class Tracker:
         # ----------------------------
 
         # --- Parameters ---
-        ATTACK_COST = self._stamina_cost(Action.ATTACK)
+        ATTACK_COST = Action.ATTACK.stamina_cost()
         THREAT_THRESHOLD = self.THREAT_THRESHOLD
 
         # 1. Behavioral Threat (attack frequency)
@@ -168,15 +168,6 @@ class Tracker:
         features["enemy_attack_likelihood"] = compute_imminent_attack_likely(self.game_ref.player_1, 5)
 
         return Tracker._enforce_features_order_then_return_as_list(features)
-
-    @staticmethod
-    def _stamina_cost(action: Action) -> int:
-        return {
-            Action.ATTACK: 30,
-            Action.DEFENSE: 0,
-            Action.DODGE: 10,
-            Action.HEAL: 45
-        }[action]
     
     @staticmethod
     def _enforce_features_order_then_return_as_list(features: Dict[str, float]) -> List[float]: 

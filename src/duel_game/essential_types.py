@@ -8,6 +8,18 @@ class Action(IntEnum):
     DEFENSE = 2
     DODGE = 3
     HEAL = 4
+    NONE = 5 
+
+    def stamina_cost(self) -> int:
+        """Return stamina cost for this action"""
+        costs = {
+            Action.ATTACK: 50,
+            Action.DEFENSE: 0,
+            Action.DODGE: 10,
+            Action.HEAL: 60,
+            Action.NONE: 0
+        }
+        return costs[self]
 
     @classmethod
     def to_string(cls, value: int) -> str:

@@ -67,7 +67,7 @@ def compute_imminent_attack_likely(player: DummyPlayer, history_length):
         # -----------------------------
         # 2. Capability Score (HARD CONSTRAINT)
         # -----------------------------
-        ATTACK_COST = 30
+        ATTACK_COST = Action.ATTACK.stamina_cost()
         MAX_STAMINA = 100
 
         if opponent_stamina < ATTACK_COST:

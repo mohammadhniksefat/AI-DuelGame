@@ -1,5 +1,5 @@
 from __future__ import annotations
-from essential_types import Action, PlayerState
+from essential_types import Action, PlayerState, DataSample
 from trained_model import TrainedModel
 from helpers import break_down_probability, compute_imminent_attack_likely
 from abc import ABC, abstractmethod
@@ -27,7 +27,6 @@ class Player(ABC):
         self.action_in_turn: Action|None = None
         self.rng = rng
 
-    @abstractmethod
     def choose_action(self) -> Action:
         pass
 
@@ -39,23 +38,23 @@ class Player(ABC):
 
     def choose_random_feasible_action(self):
         possible_actions = list(Action)
-        if self.stamina < 30:
+        if self.stamina < Action.ATTACK.stamina_cost():
             possible_actions.remove(Action.ATTACK)
-        if self.stamina < 45:
+        if self.stamina < Action.HEAL.stamina_cost():
             possible_actions.remove(Action.HEAL)
         if not self.is_shield_available:
             possible_actions.remove(Action.DEFENSE)
         
         return self.rng.choice(possible_actions)    
 
-    def is_action_feasible(self, action: Action):
+    def is_action_feasible(self, action: Action|None):
         if action == Action.HEAL:
-            return self.stamina >= 45 and self.health <= 100
+            return self.stamina >= Action.HEAL.stamina_cost() and self.health < 100
         elif action == Action.ATTACK:
-            return self.stamina >= 30
+            return self.stamina >= Action.ATTACK.stamina_cost()
         elif action == Action.DEFENSE:
             return self.is_shield_available
-        return True   # Dodge is always feasible
+        return True   # Dodge and None are always feasible
 
 
     # returns a list of opponent actions like [last_action(0), 2_turns_ago_action,..., n_turns_ago_action]
@@ -79,10 +78,13 @@ class ArtificialPlayer(Player):
         self.model = prediction_model
 
     def choose_action(self) -> Action:
-        last_round_sample = self.game.tracker.get_last_sample()
-        predicted_action = self.model.predict(last_round_sample.features)
+        last_round_sample: DataSample|None = self.game.tracker.get_last_sample()
+        predicted_action: Action|None = self.model.predict(last_round_sample.features if last_round_sample is not None else None)
 
-        my_action: Action
+        if predicted_action == Action.ATTACK and not self.game.player_1.is_action_feasible(predicted_action):
+            predicted_action = Action.DEFENSE
+
+        my_action: Action = Action.NONE
 
         if predicted_action == Action.ATTACK:
             if self.is_action_feasible(Action.DEFENSE):
@@ -91,12 +93,18 @@ class ArtificialPlayer(Player):
                 my_action = Action.HEAL
             else:
                 my_action = Action.DODGE
-        elif predicted_action == Action.DEFENSE:
-            my_action = None
-        elif predicted_action == Action.DODGE:
-            my_action = Action.ATTACK
-        elif predicted_action == Action.HEAL:
-            my_action = Action.ATTACK
+        elif predicted_action in [Action.DEFENSE, Action.DODGE, Action.HEAL, Action.NONE]:
+            if not self.is_action_feasible(Action.ATTACK):
+                my_action = Action.NONE
+            else:
+                if self.health < 40 and self.is_action_feasible(Action.HEAL):
+                    my_action = Action.HEAL
+                elif self.is_action_feasible(Action.ATTACK):
+                    my_action = Action.ATTACK
+                else:
+                    my_action = Action.DODGE if random.random() > 0.1 else Action.NONE
+        else:
+            raise ValueError('unexpected predicted_value provided by model.predict(): ', predicted_action)
 
         return my_action
 
@@ -134,14 +142,14 @@ class Aggressive(Policy):
             
             action = None
             if self.health <= HEAL_THRESHOLD:
-                if self.stamina >= 45:
+                if self.stamina >= Action.HEAL.stamina_cost():
                     action = Action.HEAL
                 elif self.is_shield_available and \
                     compute_imminent_attack_likely(self ,THREAT_HISTORY_LENGTH) > ATTACK_THREAT_THRESHOLD:
                     action = Action.DEFENSE
 
             if action is None:
-                if self.stamina >= 30:
+                if self.stamina >= Action.ATTACK.stamina_cost():
                     if self.rng.random() < ATTACK_BIAS:
                         action = Action.ATTACK
                     else:
@@ -177,14 +185,14 @@ class Defensive(Policy):
             
             # Check opponent's HP for opportunistic attack
             if self.opponent.health < OPP_HP_THRESHOLD and self.rng.random() < ATTACK_PROB_OPP_HP_LOW:
-                if self.stamina >= 30:
+                if self.stamina >= Action.ATTACK.stamina_cost():
                     action = Action.ATTACK
                 else:
                     action = Action.DODGE
             else:
                 # Defensive logic based on own HP
                 if self.health <= 60:
-                    if self.rng.random() < HEAL_BIAS and self.stamina >= 45:
+                    if self.rng.random() < HEAL_BIAS and self.stamina >= Action.HEAL.stamina_cost():
                         action = Action.HEAL
                     elif self.rng.random() < DEFENSE_BIAS and self.is_shield_available:
                         action = Action.DEFENSE
@@ -194,7 +202,7 @@ class Defensive(Policy):
                         action = Action.DODGE
                 elif self.game.turn > ATTACK_START_TURN_THRESHOLD and \
                      compute_imminent_attack_likely(self, ATTACK_THREAT_HISTORY_LENGTH) < ATTACK_THREAT_THRESHOLD and \
-                     self.stamina >= 30:
+                     self.stamina >= Action.ATTACK.stamina_cost():
                     action = Action.ATTACK
                 else:
                     if self.rng.random() < 0.5 and self.is_shield_available:
@@ -227,14 +235,14 @@ class Balanced(Policy):
             hp_diff = self.health - self.opponent.health
             
             # Domination situation
-            if hp_diff >= DOMINATION_MARGIN and self.stamina >= 30:
+            if hp_diff >= DOMINATION_MARGIN and self.stamina >= Action.ATTACK.stamina_cost():
                 return Action.ATTACK
             
             # Desperation situation
             elif hp_diff <= DESPERATION_MARGIN:
                 if self.is_shield_available:
                     return Action.DEFENSE
-                elif self.stamina >= 45:
+                elif self.stamina >= Action.HEAL.stamina_cost():
                     return Action.HEAL
                 else:
                     return Action.DODGE
@@ -302,14 +310,14 @@ class Healer(Policy):
                 return self.choose_random_feasible_action()
             
             if self.health < HEAL_THRESHOLD:
-                if self.stamina >= 45 and self.rng.random() < HEAL_BIAS:
+                if self.stamina >= Action.HEAL.stamina_cost() and self.rng.random() < HEAL_BIAS:
                     action = Action.HEAL
                 elif self.is_shield_available:
                     action = Action.DEFENSE
                 else:
                     action = Action.DODGE
             else:
-                if self.rng.random() < ATTACK_PROB and self.stamina >= 30:
+                if self.rng.random() < ATTACK_PROB and self.stamina >= Action.ATTACK.stamina_cost():
                     action = Action.ATTACK
                 else:
                     action = Action.DODGE
@@ -349,13 +357,13 @@ class Opportunist(Policy):
             
             # Health check first
             if self.health < HEAL_THRESHOLD and self.rng.random() < HEAL_BIAS:
-                if self.stamina >= 45:
+                if self.stamina >= Action.HEAL.stamina_cost():
                     return Action.HEAL
             
             # Pattern-based decision making
             if defensive_ratio > DECISION_THRESHOLD:
                 # Opponent is being defensive, attack
-                if self.stamina >= 30:
+                if self.stamina >= Action.ATTACK.stamina_cost():
                     return Action.ATTACK
                 else:
                     return Action.DODGE
@@ -368,7 +376,7 @@ class Opportunist(Policy):
             else:
                 # No clear pattern, random choice between attack, defense, dodge
                 feasible_actions = []
-                if self.stamina >= 30:
+                if self.stamina >= Action.ATTACK.stamina_cost():
                     feasible_actions.append(Action.ATTACK)
                 if self.is_shield_available:
                     feasible_actions.append(Action.DEFENSE)
@@ -403,7 +411,7 @@ class RandomBiased(Policy):
             }
             
             # Check feasibility and adjust weights
-            if self.stamina < 45:  # Heal requires 45 stamina
+            if self.stamina < Action.HEAL.stamina_cost():
                 if Action.HEAL in weights:
                     weights = break_down_probability(weights, Action.HEAL)
             
@@ -411,7 +419,7 @@ class RandomBiased(Policy):
                 if Action.DEFENSE in weights:
                     weights = break_down_probability(weights, Action.DEFENSE)
             
-            if self.stamina < 30:  # Attack requires 30 stamina
+            if self.stamina < Action.ATTACK.stamina_cost():
                 if Action.ATTACK in weights:
                     weights = break_down_probability(weights, Action.ATTACK)
             
