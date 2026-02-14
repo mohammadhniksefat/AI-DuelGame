@@ -2,12 +2,13 @@ from time import sleep
 from dataclasses import asdict
 from random import random
 
-from essential_types import GameState, Action
+from duel_game.core.essential_types import GameState, Action
 
 class OldPresenter:
     @staticmethod
     def intro():
         print('Welcome to Duel Game')
+
 
     @staticmethod
     def insert_margin(func):
@@ -22,7 +23,7 @@ class OldPresenter:
 
         return new_func
     
-    
+
     @staticmethod
     @insert_margin
     def main_menu() -> str:
@@ -75,7 +76,7 @@ class OldPresenter:
         print("-" * 70)
         print("• Health: Starts at 100. If it reaches 0, you lose.")
         print("• Stamina: Starts at 100. Used to perform actions.")
-        print("• At the end of every turn, BOTH players regain +20 stamina.")
+        print("• At the end of every turn, BOTH players regain +30 stamina.")
         print("• Maximum Health and Stamina are capped at 100.")
         print()
 
@@ -324,7 +325,7 @@ class OldPresenter:
             print('Was a Good Game, GG...')
         elif whether_game_ends == False:
             sleep(2)
-            print('Next turn is about to begin. Both Players Stamina will Increase by 20')
+            print('Next turn is about to begin. Both Players Stamina will Increase by 30')
             if sheild_count_down > 1:
                 print(f'Shield will become available in {sheild_count_down} Turns')
             elif sheild_count_down == 1:
@@ -552,7 +553,7 @@ class Presenter:
             print("-" * 70)
             print("• Health: Starts at 100. If it reaches 0, you lose.")
             print("• Stamina: Starts at 100. Used to perform actions.")
-            print("• At the end of every turn, BOTH players regain +20 stamina.")
+            print("• At the end of every turn, BOTH players regain +30 stamina.")
             print("• Maximum Health and Stamina are capped at 100.")
             print()
 
@@ -916,7 +917,7 @@ class Presenter:
             else:
                 print(static_detail + "Both of you pause cautiously, neither willing to make the first move this turn.")
 
-    def after_turn(self, sheild_count_down: int, whether_game_ends: bool, player_wins: bool):
+    def after_turn(self, sheild_count_down: int, whether_game_ends: bool, player_wins: bool|None):
         print()
 
         if whether_game_ends == True:
@@ -934,6 +935,13 @@ class Presenter:
                 else:
                     print('The opponent overwhelms you with a decisive strike — you have been defeated.')
                 print(80 * '-')
+            elif player_wins == None:
+                print(80 * '-')
+                if self.lang == 'fa':
+                    print('Har do jangavar hamzamaan ba zarbeye akhar jaan baakhtand — hich barandehi vojud nadarad va nabard ba tasavi payan miyaabad.')
+                else:
+                    print('Both fighters land their final blows at the same time and die on the battlefield — there is no victor, the battle ends in a draw.')
+                print(80 * '-')
             else:
                 raise ValueError('unexpected player_wins value provided ', str(player_wins))
             if self.lang == 'fa':
@@ -945,7 +953,7 @@ class Presenter:
             if self.lang == 'fa':
                 print('Nobat-e baadi dar sharof-e shoroo ast. Esteghaamat-e har do baazikon 20 vahed afzaayesh miyabad')
             else:
-                print('Next turn is about to begin. Both Players Stamina will Increase by 20')
+                print('Next turn is about to begin. Both Players Stamina will Increase by 30')
             if sheild_count_down > 1:
                 if self.lang == 'fa':
                     print(f'Separ dar {sheild_count_down} nobat digar dar dastres khahad bood')

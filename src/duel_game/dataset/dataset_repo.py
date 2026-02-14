@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
-from essential_types import DataSample
+from duel_game.core.essential_types import DataSample
 
 class DatasetRepository:
     def __init__(self, db_path: str = "database.db"):

@@ -2,11 +2,24 @@
 from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from enum import Enum
-from essential_types import Action
+from pathlib import Path
+import os
+import sys
+
+from duel_game.core.essential_types import Action
 
 # to prevent circular import errors (ImportError)
 if TYPE_CHECKING:
-    from player import DummyPlayer
+    from duel_game.core.player import DummyPlayer
+
+def get_base_path() -> Path:
+    if is_in_bundled():
+        return Path(getattr(sys, '_MEIPASS', os.path.abspath('.')))
+    else:
+        return Path(os.path.dirname(__file__)).parent
+    
+def is_in_bundled():
+    return bool(getattr(sys, 'frozen', False))
 
 def break_down_probability(prob_dict: Dict[Enum, float], target_value: Enum, remove_target: bool = True) -> Dict[Enum, float]:
     """

@@ -1,7 +1,7 @@
-from player import Player
-from data_processor import Tracker
-from essential_types import Action, GameState
-from presenter import Presenter
+from duel_game.core.player import Player
+from duel_game.dataset.data_processor import Tracker
+from duel_game.core.essential_types import Action, GameState
+from duel_game.core.presenter import Presenter
 from enum import Enum
 import random
 import math
@@ -10,7 +10,7 @@ import math
 class DuelGame:
     attack_damage = 20
     heal_amount = 20
-    increase_stamina_each_turn = 20
+    increase_stamina_each_turn = 30
     sheild_spawn_duration = 5 # turns for shield to get accessible for doing Defense
     dodge_probability = 0.5
 
@@ -53,7 +53,7 @@ class DuelGame:
             while True:
                 self._play_turn()
                 whether_game_ends = self._check_whether_game_ends()
-                self.presenter.after_turn(self.player_1.shield_cd, whether_game_ends, player_wins=(self.winner == self.player_1))
+                self.presenter.after_turn(self.player_1.shield_cd, whether_game_ends, player_wins=(self.winner == self.player_1) if self.winner is not None else None)
                 if whether_game_ends:
                     break
 
@@ -99,7 +99,8 @@ class DuelGame:
         is_player_1_died = self.player_1.health <= 0
         is_player_2_died = self.player_2.health <= 0
         if is_player_1_died ^ is_player_2_died:
-            self.winner = self.player_1 if is_player_2_died else self.player_2
+            self.winner = None if (is_player_1_died and is_player_2_died) else \
+                self.player_1 if is_player_2_died else self.player_2
 
         is_max_turns_reached = self.turn >= self.max_turns
 

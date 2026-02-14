@@ -18,3 +18,5 @@ Thumbs.db
 
 # Generated Data (including samples of training) and may include models
 data/
+dist/
+build/

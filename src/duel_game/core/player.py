@@ -1,7 +1,7 @@
 from __future__ import annotations
-from essential_types import Action, PlayerState, DataSample
-from trained_model import TrainedModel
-from helpers import break_down_probability, compute_imminent_attack_likely
+from duel_game.core.essential_types import Action, PlayerState, DataSample
+from duel_game.core.ml_model import TrainedModel
+from duel_game.core.helpers import break_down_probability, compute_imminent_attack_likely, get_base_path, is_in_bundled
 from abc import ABC, abstractmethod
 from typing import Callable, TYPE_CHECKING, Dict, Callable, Type
 from enum import Enum
@@ -11,10 +11,11 @@ import os
 
 # to prevent circular import errors (ImportError)
 if TYPE_CHECKING:
-    from game import DuelGame
+    from duel_game.core.game import DuelGame
 
-# Load environment variables
-load_dotenv()
+if not is_in_bundled():
+    # Load environment variables
+    load_dotenv(get_base_path() / '.env')
 
 class Player(ABC):
     def __init__(self, rng=random.Random()):
@@ -82,29 +83,28 @@ class ArtificialPlayer(Player):
         predicted_action: Action|None = self.model.predict(last_round_sample.features if last_round_sample is not None else None)
 
         if predicted_action == Action.ATTACK and not self.game.player_1.is_action_feasible(predicted_action):
-            predicted_action = Action.DEFENSE
+            predicted_action = Action.NONE
 
         my_action: Action = Action.NONE
-
-        if predicted_action == Action.ATTACK:
-            if self.is_action_feasible(Action.DEFENSE):
-                my_action = Action.DEFENSE
-            elif self.is_action_feasible(Action.HEAL):
-                my_action = Action.HEAL
-            else:
-                my_action = Action.DODGE
-        elif predicted_action in [Action.DEFENSE, Action.DODGE, Action.HEAL, Action.NONE]:
-            if not self.is_action_feasible(Action.ATTACK):
-                my_action = Action.NONE
-            else:
-                if self.health < 40 and self.is_action_feasible(Action.HEAL):
+        if not self.game.player_1.is_action_feasible(Action.ATTACK) and not self.is_action_feasible(Action.ATTACK):
+            my_action = Action.NONE
+        else:
+            if predicted_action == Action.ATTACK:
+                if self.is_action_feasible(Action.DEFENSE):
+                    my_action = Action.DEFENSE
+                elif self.is_action_feasible(Action.HEAL):
+                    my_action = Action.HEAL
+                else:
+                    my_action = Action.DODGE
+            elif predicted_action in [Action.DEFENSE, Action.DODGE, Action.HEAL, Action.NONE]:
+                if self.health < 50 and self.is_action_feasible(Action.HEAL) and random.random() > 0.5:
                     my_action = Action.HEAL
                 elif self.is_action_feasible(Action.ATTACK):
                     my_action = Action.ATTACK
                 else:
-                    my_action = Action.DODGE if random.random() > 0.1 else Action.NONE
-        else:
-            raise ValueError('unexpected predicted_value provided by model.predict(): ', predicted_action)
+                    my_action = Action.DODGE
+            else:
+                raise ValueError('unexpected predicted_value provided by model.predict(): ', predicted_action)
 
         return my_action
 

@@ -1,7 +1,7 @@
-from essential_types import GameState, Action
-from essential_types import features as feature_names
-from helpers import compute_imminent_attack_likely
-from essential_types import DataSample
+from duel_game.core.essential_types import GameState, Action
+from duel_game.core.essential_types import features as feature_names
+from duel_game.core.helpers import compute_imminent_attack_likely
+from duel_game.core.essential_types import DataSample
 from dotenv import load_dotenv
 from typing import List, Dict
 

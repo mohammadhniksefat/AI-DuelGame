@@ -1,16 +1,20 @@
-from game import DuelGame
-from presenter import Presenter
-from player import Player, ArtificialPlayer
-from trained_model import TrainedModel, ModelRepository
-from data_processor import Tracker
+from duel_game.core.game import DuelGame
+from duel_game.core.presenter import Presenter
+from duel_game.core.player import Player, ArtificialPlayer
+from duel_game.core.ml_model import TrainedModel
+from duel_game.core.helpers import get_base_path, is_in_bundled
+from duel_game.dataset.data_processor import Tracker
 
 from dotenv import load_dotenv
-from typing import Dict, List
+from typing import List
 import json
 from pathlib import Path 
 import os
 
-load_dotenv()
+if not is_in_bundled():
+    load_dotenv(get_base_path() / '.env')
+
+default_model_path = os.path.join(get_base_path(), 'default_model.json')
 
 def main():
     a_game_played = False
@@ -19,7 +23,7 @@ def main():
         presenter = Presenter(lang)
 
         player = Player()
-        model = load_default_model(Path(os.path.dirname(__file__)) / (os.getenv('DEFAULT_MODEL_FILE_PATH')))
+        model = load_default_model(default_model_path)
 
         ai_brain = TrainedModel(model["weights"])
         ai_opponent = ArtificialPlayer(ai_brain)

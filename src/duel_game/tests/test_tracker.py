@@ -3,10 +3,10 @@ import pytest
 from unittest.mock import Mock, patch
 
 # Adjust these imports if your project paths differ.
-from data_processor import Tracker
-from game import DuelGame
-from player import PlayerState
-from essential_types import GameState, Action
+from duel_game.dataset.data_processor import Tracker
+from duel_game.core.game import DuelGame
+from duel_game.core.player import PlayerState
+from duel_game.core.essential_types import GameState, Action
 
 
 def make_player(health, stamina, is_shield_available, shield_cd, action):
